@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.550">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Pierre-Olivier Schwarz">
+
+<title>Devoir 4</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="devoir4_files/libs/clipboard/clipboard.min.js"></script>
+<script src="devoir4_files/libs/quarto-html/quarto.js"></script>
+<script src="devoir4_files/libs/quarto-html/popper.min.js"></script>
+<script src="devoir4_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="devoir4_files/libs/quarto-html/anchor.min.js"></script>
+<link href="devoir4_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="devoir4_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="devoir4_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="devoir4_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="devoir4_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Devoir 4</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Pierre-Olivier Schwarz </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="création-dune-série-temporelle-du-co2" class="level2">
+<h2 class="anchored" data-anchor-id="création-dune-série-temporelle-du-co2">Création d’une série temporelle du CO2</h2>
+<p>Les données sont chargées à partir du fichier “hawai.csv”. Toutefois, les valeurs de temps sont données par des nombres décimaux correspondant aux années. Ainsi, la première valeur, qui correspond au mois de mars 1958, est associée à la valeur de temps 1958.167. La fonction <em>date_decimal</em> de la librairie <em>lubridate</em> est donc utilisée pour convertir ces valeurs en format “<em>année</em>-<em>mois</em>-<em>jour</em> <em>heure</em>:<em>minutes</em>:<em>secondes</em>”. Le fuseau horaire à Hawaï est <em>HST</em>.</p>
+<p>Comme il s’agit de données mensuelles, une colonne “month” est ajoutée pour représenter le mois, et est utilisée comme index. Pour créer cette colonne, on arrondit au mois près, étant donné que les nombres décimaux représentant les années dans le fichier initial sont arrondis, menant parfois à deux dates dans le même mois. Par exemple, convertir à l’aide de la fonction <em>date_decimal</em> le jeu de données initial mène à deux observations en janvier 1959 (le 1er et le 31 janvier), mais à aucune observation en février 1959. Ainsi, arrondir au mois près permet de s’assurer qu’il y a bien une donnée à chaque mois.</p>
+<p>Finalement, les données sont transformées au format <em>tsibble</em> pour les manipulations qui suivront.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>hawai <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"../data/hawai.csv"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>hawai<span class="sc">$</span>time <span class="ot">&lt;-</span> <span class="fu">round_date</span>(<span class="fu">date_decimal</span>(hawai<span class="sc">$</span>time,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">tz =</span> <span class="st">"HST"</span>),</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                         <span class="at">unit =</span> <span class="st">"month"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>hawai_ts <span class="ot">&lt;-</span> <span class="fu">tsibble</span>(hawai,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                    <span class="at">month =</span> <span class="fu">yearmonth</span>(hawai<span class="sc">$</span>time),</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>                    <span class="at">index =</span> month,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                    )</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(hawai_ts) <span class="sc">+</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a> <span class="fu">aes</span>(<span class="at">x =</span> month, <span class="at">y =</span> CO2) <span class="sc">+</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a> <span class="fu">geom_line</span>(<span class="at">colour =</span> <span class="st">"#112446"</span>) <span class="sc">+</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a> <span class="fu">theme_minimal</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="devoir4_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>On peut observer en visualisant les données que le CO2 semble avoir une oscillation annuelle, mais que d’une année à l’autre, la tendance du CO2 augmente entre 1958 et 2001.</p>
+</section>
+<section id="création-des-jeux-dentraînement-et-de-test" class="level2">
+<h2 class="anchored" data-anchor-id="création-des-jeux-dentraînement-et-de-test">Création des jeux d’entraînement et de test</h2>
+<p>Les données sont séparées en un jeu d’entraînement comportant environ 70% des données, et un jeu de test contenant les 30% restant. Comme les données couvrent un intervalle d’environ 43 ans, le jeu d’entraînement comporte les 30 premières années, soit de 1958 à 1988.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>hawai_ts_train <span class="ot">&lt;-</span> hawai_ts <span class="sc">|&gt;</span> </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">year</span>(month) <span class="sc">&lt;=</span> <span class="dv">1988</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>hawai_ts_test <span class="ot">&lt;-</span> hawai_ts <span class="sc">|&gt;</span> </span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">year</span>(month) <span class="sc">&gt;</span> <span class="dv">1988</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Aucun prétraitement ne sera appliqué aux données.</p>
+</section>
+<section id="entraînement-et-validation-dun-modèle-prévisionnel" class="level2">
+<h2 class="anchored" data-anchor-id="entraînement-et-validation-dun-modèle-prévisionnel">Entraînement et validation d’un modèle prévisionnel</h2>
+<p>Deux modèles prévisonnels sont comparés dans cette section, soit un modèle conçu en suivant la méthode SES, et un autre avec la méthode ARIMA. La méthode naïve et la méthode naïve saisonnière ne sont pas considérés en raison de leur simplicité. En effet, la méthode naïve ne se base que sur la valeur précédente, et ne permettra donc pas de modéliser les fluctuations cycliques annuelles ni la tendance à la hausse d’une année à l’autre.</p>
+<p>La méthode naïve saisonnière permettrait quant à elle de mieux représenter les oscillations annuelles, mais en se basant sur la saison précédente, elle ne permettrait pas non plus de modéliser la tendance à la hausse.</p>
+<p>Les lignes de code suivantes illustrent ceci en créant des modèles basés sur la méthode naïve et sur la méthode naïve saisonnière à partir du jeu d’entraînement créé plus tôt, en générant des prédictions sur 13 ans (correspondant au jeu de test), puis en comparant les prédictions de chaque modèle au jeu de test.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Créer les modèles</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>hawai_fit_naive <span class="ot">&lt;-</span> hawai_ts_train <span class="sc">|&gt;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">model</span>(</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">Naive =</span> <span class="fu">NAIVE</span>(CO2),</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">SNaive =</span> <span class="fu">SNAIVE</span>(CO2)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Générer les prédictions pour 13 ans</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>hawai_fc_naive <span class="ot">&lt;-</span> hawai_fit_naive <span class="sc">|&gt;</span> <span class="fu">forecast</span>(<span class="at">h =</span> <span class="dv">12</span><span class="sc">*</span><span class="dv">13</span>)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualiser les prédictions</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>hawai_fc_naive <span class="sc">|&gt;</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autoplot</span>(hawai_ts_train, <span class="at">level =</span> <span class="cn">NULL</span>) <span class="sc">+</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autolayer</span>(<span class="fu">fitted</span>(hawai_fit_naive), </span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>            <span class="at">.vars =</span> .fitted, </span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>            <span class="at">alpha =</span> <span class="fl">0.4</span>)<span class="sc">+</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autolayer</span>(hawai_ts_test, </span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>            <span class="at">.vars =</span> CO2,</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>            <span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="sc">+</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">guides</span>(<span class="at">colour =</span> <span class="fu">guide_legend</span>(<span class="at">title =</span> <span class="st">"Prédictions"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 13 rows containing missing values or values outside the scale range
+(`geom_line()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="devoir4_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Ainsi, ces modèles ne semblent pas appropriés pour modéliser l’évolution du CO2 dans le temps. Les sections suivantes s’intéresseront donc aux méthodes SES et ARIMA, et seuls ces deux modèles seront considérés pour le reste de l’analyse (par exemple pour l’analyse des résidus).</p>
+<section id="méthode-ses" class="level3">
+<h3 class="anchored" data-anchor-id="méthode-ses">Méthode SES</h3>
+<p>Un modèle basé sur la méthode SES est ici présenté. Tel que discuté plus haut, l’observation du jeu de données permet d’observer une tendance à la hausse du CO2 dans le temps, de même que des fluctuations saisonnières. Pour prendre en compte la tendance, la méthode de Holt est considérée, étant donné que la méthode de Holt adoucit mènerait à une tendance de moins en moins importante, ce qui n’est pas le cas dans le jeu de données. Pour les fluctuations saisonnières, des paramètres saisonniers additifs seront utilisés.</p>
+<p>Le choix de ces paramètres peut être validé en laissant le modèle ETS par défaut optimiser les paramètres, tel que présenté dans les lignes suivantes :</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Créer le modèle</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>hawai_fit_ses <span class="ot">&lt;-</span> hawai_ts_train <span class="sc">|&gt;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">model</span>(<span class="fu">ETS</span>(CO2))</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">report</span>(hawai_fit_ses)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Series: CO2 
+Model: ETS(A,A,A) 
+  Smoothing parameters:
+    alpha = 0.6698379 
+    beta  = 0.002980282 
+    gamma = 0.0001553751 
+
+  Initial states:
+     l[0]      b[0]      s[0]      s[-1]      s[-2]     s[-3]     s[-4]
+ 315.2483 0.1019837 0.6164408 0.01156209 -0.9383775 -2.020657 -3.089916
+     s[-5]    s[-6]     s[-7]    s[-8]    s[-9]   s[-10]  s[-11]
+ -2.885263 -1.23809 0.7046543 2.237917 2.834376 2.416042 1.35131
+
+  sigma^2:  0.1159
+
+     AIC     AICc      BIC 
+1408.202 1409.940 1474.731 </code></pre>
+</div>
+</div>
+<p>Les prédictions d’un tel modèle peuvent alors être visualisées :</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Générer les prédictions pour 13 ans</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>hawai_fc_ses <span class="ot">&lt;-</span> hawai_fit_ses <span class="sc">|&gt;</span> <span class="fu">forecast</span>(<span class="at">h =</span> <span class="dv">12</span><span class="sc">*</span><span class="dv">13</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualiser les prédictions</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>hawai_fc_ses <span class="sc">|&gt;</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autoplot</span>(hawai_ts_train) <span class="sc">+</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autolayer</span>(hawai_ts_test, </span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">.vars =</span> CO2,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>            <span class="at">alpha =</span> <span class="fl">0.7</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="devoir4_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>La figure précédente permet de constater que le modèle semble beaucoup mieux performer que les modèles générés avec la méthode naïve et la méthode naïve saisonnière. Une analyse plus quantitative du modèle sera effectuée à la section suivante, mais pour l’instant, la comparaison visuelle entre le jeu de test et la prédiction pour les années 1989 à 2001 montre que les données du jeu de test se trouvent en grande majorité à l’intérieur de l’intervalle de confiance de 80%. Ceci n’est pas le cas lorsque des paramètres saisonniers multiplicatifs sont utilisés, comme en témoigne la figure suivante. Ainsi, pour la suite de l’analyse, seul le modèle précédent (avec des paramètres saisonniers additifs, tel que déterminé automatiquement par R) sera considéré.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Créer le modèle avec paramètres saisonniers multiplicatifs</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>hawai_fit_ses_mult <span class="ot">&lt;-</span> hawai_ts_train <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">model</span>(</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">ses =</span> <span class="fu">ETS</span>(<span class="st">`</span><span class="at">CO2</span><span class="st">`</span> <span class="sc">~</span> <span class="fu">error</span>(<span class="st">"A"</span>) <span class="sc">+</span> <span class="fu">trend</span>(<span class="st">"A"</span>) <span class="sc">+</span> <span class="fu">season</span>(<span class="st">"M"</span>))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualiser les prédictions</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>hawai_fit_ses_mult <span class="sc">|&gt;</span> </span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(ses) <span class="sc">|&gt;</span> </span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">forecast</span>(<span class="at">h =</span> <span class="dv">13</span><span class="sc">*</span><span class="dv">12</span>) <span class="sc">|&gt;</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autoplot</span>(hawai_ts_train) <span class="sc">+</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autolayer</span>(hawai_ts_test, </span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>            <span class="at">.vars =</span> CO2,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>            <span class="at">alpha =</span> <span class="fl">0.7</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="devoir4_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="méthode-arima" class="level3">
+<h3 class="anchored" data-anchor-id="méthode-arima">Méthode ARIMA</h3>
+<p>Un modèle basé sur la méthode ARIMA est présenté dans cette section. Comme pour le modèle basé sur la méthode SES, les fonctionnalités de la librairie sont utilisées pour optimiser les paramètres du modèle.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Créer le modèle</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>hawai_fit_arima <span class="ot">&lt;-</span> hawai_ts_train <span class="sc">|&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">model</span>(<span class="fu">ARIMA</span>(CO2,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>              <span class="at">stepwise =</span> <span class="cn">FALSE</span>, </span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>              <span class="at">approximation =</span> <span class="cn">FALSE</span>))</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="fu">report</span>(hawai_fit_arima)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Series: CO2 
+Model: ARIMA(0,1,3)(2,1,1)[12] 
+
+Coefficients:
+          ma1      ma2      ma3     sar1     sar2     sma1
+      -0.3593  -0.0458  -0.1795  -0.0308  -0.1575  -0.7918
+s.e.   0.0541   0.0539   0.0548   0.0700   0.0651   0.0525
+
+sigma^2 estimated as 0.1126:  log likelihood=-115.65
+AIC=245.31   AICc=245.63   BIC=272.45</code></pre>
+</div>
+</div>
+<p>Le modèle ainsi créé a les valeurs suivantes pour les paramètres liés aux observations précédentes : p = 0, d = 1 et q = 3. Pour les paramètres liés aux saisons précédentes, on a : P = 2, D = 1 et Q = 1.</p>
+<p>Le modèle est utilisé pour prédire les données pour les 13 années de 1989 à 2001, comme pour le modèle SES.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Générer les prédictions pour 13 ans</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>hawai_fc_arima <span class="ot">&lt;-</span> hawai_fit_arima <span class="sc">|&gt;</span> <span class="fu">forecast</span>(<span class="at">h =</span> <span class="dv">12</span><span class="sc">*</span><span class="dv">13</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualiser les prédictions</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>hawai_fc_arima <span class="sc">|&gt;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autoplot</span>(hawai_ts_train) <span class="sc">+</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">autolayer</span>(hawai_ts_test, </span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">.vars =</span> CO2,</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>            <span class="at">alpha =</span> <span class="fl">0.7</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="devoir4_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Encore une fois, le modèle semble beaucoup mieux performer que ceux basés sur la méthode naïve et sur la méthode naïve saisonnière. L’analyse quantitative complète est effectuée plus bas, mais pour l’instant, il est possible d’observer visuellement que les données semblent en général à l’intérieur de l’intervalle de confiance de 95%, mais que les prédictions semblent moins exactes qu’avec le modèle SES.</p>
+</section>
+</section>
+<section id="analyse-des-résidus-et-discussion" class="level2">
+<h2 class="anchored" data-anchor-id="analyse-des-résidus-et-discussion">Analyse des résidus et discussion</h2>
+<section id="méthode-ses-1" class="level3">
+<h3 class="anchored" data-anchor-id="méthode-ses-1">Méthode SES</h3>
+<p>Cette section présente l’analyse des résidus du modèle basé sur la méthode SES présenté plus haut. D’abord, le calcul d’exactitude permet de voir que l’erreur moyenne absolue échelonnée est inférieure à 1, ce qui permet déjà de constater que le modèle est assez performant :</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">accuracy</span>(hawai_fc_ses, hawai_ts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 10
+  .model   .type    ME  RMSE   MAE    MPE  MAPE  MASE RMSSE  ACF1
+  &lt;chr&gt;    &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+1 ETS(CO2) Test  0.259  1.11 0.884 0.0675 0.243 0.720 0.806 0.944</code></pre>
+</div>
+</div>
+<p>En ce qui concerne les résidus, la fonction <em>gg_tsresiduals</em> permet de constater que visuellement, les résidus semblent suivre une distribution normale, mais que tous les résidus ne se trouvent pas entre les intervalles de confiance. Ceci pourrait être relié à une autocorrélation entre les résidus, correspondant à une structure dans les données qui n’a pas été prise en compte par le modèle.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gg_tsresiduals</span>(hawai_fit_ses)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="devoir4_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Comme la p-value obtenue avec le test de Ljung-Box est très faible (0.001), il est peu probable que les résidus correspondent à un bruit blanc :</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>hawai_res_ses <span class="ot">&lt;-</span> hawai_fit_ses <span class="sc">|&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">augment</span>()</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>hawai_res_ses <span class="sc">|&gt;</span> </span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">features</span>(.innov, ljung_box, <span class="at">lag =</span> <span class="dv">19</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  .model   lb_stat lb_pvalue
+  &lt;chr&gt;      &lt;dbl&gt;     &lt;dbl&gt;
+1 ETS(CO2)    43.6   0.00108</code></pre>
+</div>
+</div>
+<p>Ceci peut être confirmé par un test de Shapiro-Wilk :</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">shapiro.test</span>(hawai_res_ses<span class="sc">$</span>.innov)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Shapiro-Wilk normality test
+
+data:  hawai_res_ses$.innov
+W = 0.96983, p-value = 6.061e-07</code></pre>
+</div>
+</div>
+<p>Comme la p-value est très faible, il est peu probable que que les résidus suivent bel et bien une distribution normale. En bref, l’exactitude du modèle permet de conclure qu’il permet bien de prédire l’évolution du CO2 dans le temps, mais l’analyse des résidus apporte une nuance quant à la confiance qu’on peut avoir dans un tel modèle.</p>
+</section>
+<section id="méthode-arima-1" class="level3">
+<h3 class="anchored" data-anchor-id="méthode-arima-1">Méthode ARIMA</h3>
+<p>Une analyse des résidus similaire peut être faite pour le modèle basé sur la méthode ARIMA présenté plus haut. D’abord, l’erreur moyenne absolue échelonnée est d’environ 1.46, ce qui permet déjà de constater que le modèle est assez performant. Toutefois, cette valeur est supérieure à celle obtenue avec le modèle précédent basé sur la méthode SES, qui était d’environ 0.72.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">accuracy</span>(hawai_fc_arima, hawai_ts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 10
+  .model                  .type    ME  RMSE   MAE    MPE  MAPE  MASE RMSSE  ACF1
+  &lt;chr&gt;                   &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+1 ARIMA(CO2, stepwise = … Test  -1.78  1.98  1.79 -0.493 0.495  1.46  1.44 0.914</code></pre>
+</div>
+</div>
+<p>Du côté des résidus, ceux-ci semblent encore une fois suivre une distribution normale, mais un pic ne se trouve pas dans l’intervalle de confiance, révélant une certaine structure dans les données qui n’a pas été prise en compte dans le modèle.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gg_tsresiduals</span>(hawai_fit_arima)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="devoir4_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Toutefois, contrairement au modèle obtenu avec la méthode SES, le test de Ljung-Box donne une p-value de 0.90, ce qui permet de conclure qu’il est probable que les résidus correspondent à un bruit blanc.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>hawai_res_arima <span class="ot">&lt;-</span> hawai_fit_arima <span class="sc">|&gt;</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">augment</span>()</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>hawai_res_arima <span class="sc">|&gt;</span> </span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">features</span>(.innov, ljung_box, <span class="at">lag =</span> <span class="dv">19</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  .model                                              lb_stat lb_pvalue
+  &lt;chr&gt;                                                 &lt;dbl&gt;     &lt;dbl&gt;
+1 ARIMA(CO2, stepwise = FALSE, approximation = FALSE)    11.6     0.903</code></pre>
+</div>
+</div>
+<p>Toutefois, avec un test de Shapiro-Wilk, la p-value est sous le seuil de 0.05 nécessaire pour conclure que les résidus suivent une distribution normale :</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">shapiro.test</span>(hawai_res_arima<span class="sc">$</span>.innov)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Shapiro-Wilk normality test
+
+data:  hawai_res_arima$.innov
+W = 0.98812, p-value = 0.004093</code></pre>
+</div>
+</div>
+<p>En bref, ce modèle ne permet pas d’obtenir des prévisions aussi exactes que le modèle basé sur la méthode SES lorsque les prédictions sont comparées au jeu de test. Toutefois, l’analyse des résidus révèle que ceux-ci se comportent davantage comme un bruit blanc, ce qui correspond à un avantage qu’a ce modèle par rapport à celui basé sur la méthode SES. Néanmoins, le test de normalité de Shapiro-Wilk révèle qu’on ne peut toujours pas conclure de la normalité des résidus.</p>
+<p>Pour aller plus loin, des modèles plus complexes pourraient être utilisés. Il pourrait même être envisageable d’utiliser l’intelligence artificielle dans la modélisation. Par exemple, les réseaux de neurones LSTM (<em>Long Short Term Memory</em>) pourraient être intéressants à explorer, et pourraient bien convenir à la modélisation de séries temporelles. De plus, l’utilisation d’un plus grand jeu de données permettrait d’avoir un jeu d’entraînement plus important, ce qui permettrait d’entraîner des modèles plus fiables.</p>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
